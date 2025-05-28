@@ -1,0 +1,342 @@
+basePath: /
+definitions:
+  models.Comment:
+    properties:
+      author:
+        description: Comment author's username
+        type: string
+      body:
+        description: Comment body text
+        type: string
+      created_at:
+        description: Comment creation timestamp
+        type: string
+      has_more:
+        description: Flag indicating if there are more child comments available
+        type: boolean
+      id:
+        description: Comment ID
+        type: string
+      is_more:
+        description: Flag indicating if this is a "more comments" placeholder
+        type: boolean
+      more_ids:
+        description: List of IDs for additional comments that need to be loaded
+        items:
+          type: string
+        type: array
+      replies:
+        description: Nested comment replies
+        items:
+          $ref: '#/definitions/models.Comment'
+        type: array
+      score:
+        description: Comment score
+        type: integer
+    type: object
+  models.HTTPError:
+    properties:
+      code:
+        description: HTTP status code
+        type: integer
+      message:
+        description: Error message
+        type: string
+    type: object
+  models.Post:
+    properties:
+      author:
+        description: Author's username
+        type: string
+      body:
+        description: Post body/content
+        type: string
+      created_at:
+        description: Creation timestamp
+        type: string
+      flair:
+        description: Post flair text
+        type: string
+      id:
+        description: Reddit post ID
+        type: string
+      score:
+        description: Post score (upvotes minus downvotes)
+        type: integer
+      title:
+        description: Post title
+        type: string
+      url:
+        description: Full URL to the post
+        type: string
+    type: object
+  models.PostDetail:
+    properties:
+      comments:
+        description: Comments on the post
+        items:
+          $ref: '#/definitions/models.Comment'
+        type: array
+      post:
+        allOf:
+        - $ref: '#/definitions/models.Post'
+        description: Post information
+    type: object
+  models.UserActivity:
+    properties:
+      comments:
+        description: Comments made by the user
+        items:
+          $ref: '#/definitions/models.UserComment'
+        type: array
+      posts:
+        description: Posts created by the user
+        items:
+          $ref: '#/definitions/models.UserPost'
+        type: array
+      user_info:
+        allOf:
+        - $ref: '#/definitions/models.UserInfo'
+        description: User profile information
+    type: object
+  models.UserComment:
+    properties:
+      body:
+        description: Comment body text
+        type: string
+      created_at:
+        description: Comment creation timestamp
+        type: string
+      id:
+        description: Comment ID
+        type: string
+      parent_author:
+        description: Author of the parent comment (if this is a reply)
+        type: string
+      post_id:
+        description: ID of the post containing this comment
+        type: string
+      post_title:
+        description: Title of the post containing this comment
+        type: string
+      score:
+        description: Comment score
+        type: integer
+      subreddit:
+        description: Subreddit where the comment was posted
+        type: string
+    type: object
+  models.UserInfo:
+    properties:
+      comment_karma:
+        description: Comment karma score
+        type: integer
+      created_at:
+        description: Account creation timestamp
+        type: string
+      link_karma:
+        description: Link karma score
+        type: integer
+      username:
+        description: Username
+        type: string
+    type: object
+  models.UserPost:
+    properties:
+      body:
+        description: Post body/content
+        type: string
+      created_at:
+        description: Post creation timestamp
+        type: string
+      flair:
+        description: Post flair text
+        type: string
+      id:
+        description: Post ID
+        type: string
+      score:
+        description: Post score
+        type: integer
+      subreddit:
+        description: Subreddit where the post was created
+        type: string
+      title:
+        description: Post title
+        type: string
+      url:
+        description: Full URL to the post
+        type: string
+    type: object
+host: 192.168.10.69:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: This API provides endpoints to ingest data from Reddit, including posts,
+    comments, user information, and search functionality.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Reddit Ingestion API
+  version: "1.0"
+paths:
+  /post:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a post and its comment tree from Reddit
+      parameters:
+      - description: Reddit post ID
+        in: query
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PostDetail'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+      summary: Get a Reddit post with comments
+      tags:
+      - post
+  /search:
+    get:
+      consumes:
+      - application/json
+      description: Search Reddit with various filters and parameters
+      parameters:
+      - description: Search query string
+        in: query
+        name: search_string
+        type: string
+      - description: Unix timestamp to filter posts
+        in: query
+        name: since_timestamp
+        type: integer
+      - description: Maximum number of results
+        in: query
+        name: limit
+        type: integer
+      - description: Sort order (relevance, hot, top, new, comments)
+        in: query
+        name: sort
+        type: string
+      - description: Time range (hour, day, week, month, year, all)
+        in: query
+        name: time
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+      summary: Search Reddit for posts
+      tags:
+      - search
+  /subreddit:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves posts from the specified subreddit with optional filters
+      parameters:
+      - description: Subreddit name without the r/ prefix
+        in: query
+        name: subreddit
+        required: true
+        type: string
+      - description: Unix timestamp to filter posts
+        in: query
+        name: since_timestamp
+        type: integer
+      - description: Maximum number of posts to retrieve
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+      summary: Get posts from a subreddit
+      tags:
+      - subreddit
+  /user:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves profile information, posts, and comments for a specific
+        Reddit user
+      parameters:
+      - description: Reddit username
+        in: query
+        name: username
+        required: true
+        type: string
+      - description: Unix timestamp to filter posts and comments (newer than this
+          timestamp)
+        in: query
+        name: since_timestamp
+        type: integer
+      - description: Maximum number of posts to retrieve. Use -1 for all available
+          posts
+        in: query
+        name: post_limit
+        type: integer
+      - description: Maximum number of comments to retrieve. Use -1 for all available
+          comments
+        in: query
+        name: comment_limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns user information, posts, and comments
+          schema:
+            $ref: '#/definitions/models.UserActivity'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+        "502":
+          description: Error occurred while scraping data
+          schema:
+            $ref: '#/definitions/models.HTTPError'
+      summary: Get information about a Reddit user
+      tags:
+      - user
+swagger: "2.0"
